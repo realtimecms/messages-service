@@ -549,6 +549,63 @@ definition.trigger({
   }
 })
 
+definition.trigger({
+  name: "renderPrivateMessagesSmsNotification",
+  properties: {
+    user: {
+      type: User
+    },
+    toId: {
+      type: String
+    },
+    reply: {
+      type: Boolean
+    },
+    gt: {
+      type: String
+    },
+    lte: {
+      type: String
+    }
+  },
+  async execute({ user, toId, reply, gt, lte }, { service }, emit) {
+    console.log("PRIVATE MESSAGES NOTIFICATION", { gt, lte })
+    const msgRange = {
+      gt: gt || ('priv_' + toId + '_'),
+      lte: lte || ('priv_' + toId + '\xFF')
+    }
+    const messages = (await Message.rangeGet(msgRange)).filter(msg => msg.user != user)
+    console.log("FOUND MESSAGES", msgRange, ":", messages.length)
+    if(messages.length == 0) return "none"
+    const userEntity = await User.get(user)
+    const userData = { ...userEntity.userData, display: userEntity.display }
+
+    if(!userData.phone) {
+      console.log("No user phone!")
+      return 'nosms'
+    }
+    const conversation = await PrivateConversation.get(toId)
+    const otherUser = conversation.user1 == user ? conversation.user2 : conversation.user1
+    const otherSession = conversation.user1 == user ? conversation.session2 : conversation.session1
+    const otherUserData = otherUser && await User.get(otherUser)
+    const otherSessionData = otherSession && await PublicSessionInfo.get(otherSession)
+    const lastSent = messages[messages.length-1].id
+
+    const lang = userData.language || Object.keys(i18n.languages)[0]
+
+    const sms = i18n.languages[lang].smsNotifications.privateMessagesSms({
+      user: userData,
+      phone: userData.phone,
+      otherUser: otherUserData,
+      otherSession: otherSessionData,
+      messages,
+      toId,
+      purify
+    })
+    return { sms, lastSent }
+  }
+})
+
 async function checkPrivAccess(id, { client }) {
   const conversation = await PrivateConversation.get(id)
   if(!conversation) return false
