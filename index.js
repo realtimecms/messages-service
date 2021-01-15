@@ -202,7 +202,8 @@ async function postMessage(props, { client, service }, emit, conversation) {
   data.timestamp = now
   let publicInfo
   if(!data.user) {
-    publicInfo = await getPublicInfo(client.sessionId)
+    publicInfo = await app.assertTime('getting public info', 1000,
+        () => getPublicInfo(client.sessionId), client.sessionId)
     data.session = publicInfo.id
   }
   emit({
@@ -210,8 +211,7 @@ async function postMessage(props, { client, service }, emit, conversation) {
     message,
     data
   })
-
-  ;await (async () => {
+  app.assertTime('triggering read history', 5000, async () => {
     if(toType == 'priv') {
       if(!conversation) conversation = await PrivateConversation.get(toId)
       const amIFirst = client.user
@@ -247,7 +247,7 @@ async function postMessage(props, { client, service }, emit, conversation) {
         toType, toId, eventId: message
       })
     }
-  })()
+  })
 }
 
 definition.action({
@@ -578,6 +578,8 @@ definition.trigger({
     console.log("FOUND MESSAGES", msgRange, ":", messages.length)
     if(messages.length == 0) return "none"
     const userEntity = await User.get(user)
+    console.log("user", user, userEntity)
+    if(!userEntity) return 'nouser'; // user deleted, no need to send messages
     const userData = { ...userEntity.userData, display: userEntity.display }
 
     if(!userData.phone) {
@@ -593,6 +595,8 @@ definition.trigger({
 
     const lang = userData.language || Object.keys(i18n.languages)[0]
 
+    console.log("RENDERING SMS")
+
     const sms = i18n.languages[lang].smsNotifications.privateMessagesSms({
       user: userData,
       phone: userData.phone,
@@ -602,6 +606,9 @@ definition.trigger({
       toId,
       purify
     })
+
+    console.log("RENRED SMS", sms)
+
     return { sms, lastSent }
   }
 })
