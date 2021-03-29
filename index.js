@@ -379,6 +379,8 @@ definition.action({
   },
   async execute(props, { client, service }, emit) {
     const { user, session } = props
+    delete props.user
+    delete props.session
     const me = { user: client.user, session: client.sessionId }
     const other = { user, session }
     const participants = privateConversationParticipants(me, other)
