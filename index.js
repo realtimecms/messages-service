@@ -523,8 +523,11 @@ definition.trigger({
     console.log("FOUND MESSAGES", msgRange, ":", messages.length)
     if(messages.length == 0) return "none"
     const userEntity = await User.get(user)
-    const userData = { ...userEntity.userData, display: userEntity.display }
-
+    if(!userEntity) {
+      console.log("user deleted - no email!")
+      return 'noemail'
+    }
+    const userData = { ...(userEntity.userData), display: userEntity.display }
     if(!userData.email) {
       console.log("No user email!")
       return 'noemail'
