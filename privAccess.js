@@ -1,8 +1,15 @@
 const { combineRoles } = require('../config/roles.js')
+const app = require("@live-change/framework").app()
 
-function privAccess(app, definition) {
+function privAccess(definition) {
 
-  const Conversation = definition.foreignModel('messages', 'Conversation')
+
+  const { getAccess, hasRole, checkIfRole, getPublicInfo,
+    Access, SessionAccess, PublicSessionInfo, Membership } =
+      require("../access-control-service/access.js")(app, definition)
+
+  const PrivateConversation = definition.foreignModel('messages', 'PrivateConversation')
+
   async function checkPrivAccess(id, { client }) {
     const conversation = await PrivateConversation.get(id)
     if(!conversation) return false
