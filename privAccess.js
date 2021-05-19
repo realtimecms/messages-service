@@ -3,10 +3,9 @@ const app = require("@live-change/framework").app()
 
 function privAccess(definition) {
 
-
   const { getAccess, hasRole, checkIfRole, getPublicInfo,
     Access, SessionAccess, PublicSessionInfo, Membership } =
-      require("../access-control-service/access.js")(app, definition)
+      require("../access-control-service/access.js")(definition)
 
   const PrivateConversation = definition.foreignModel('messages', 'PrivateConversation')
 

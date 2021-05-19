@@ -3,7 +3,7 @@ const definition = require('./definition.js')
 
 const { getAccess, hasRole, checkIfRole, getPublicInfo,
   Access, SessionAccess, PublicSessionInfo, Membership } =
-    require("../access-control-service/access.js")(app, definition)
+    require("../access-control-service/access.js")(definition)
 
 const User = definition.foreignModel('users', 'User')
 const Session = definition.foreignModel('session', 'Session')
