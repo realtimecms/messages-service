@@ -163,8 +163,45 @@ definition.action({
       conversation = { id, ...conversation }
       await PrivateConversation.create(conversation)
     }
-    return postMessage({ ...props, toType: 'priv', toId: conversation.id }, { client, service }, emit,
-        conversation)
+    return postMessage({ ...props, toType: 'priv', toId: conversation.id },
+      { user: client.user, session: client.sessionId },
+      emit, conversation)
+  }
+})
+
+definition.trigger({
+  name: "postPrivateMessage",
+  properties: {
+    user: {
+      type: User
+    },
+    session: {
+      type: PublicSessionInfo
+    },
+    ...messageFields
+  },
+  async execute(props, context, emit) {
+    const { user, session, fromUser, fromSession } = props    
+    delete props.user
+    delete props.fromUser
+    const me = { user: fromUser }
+    const other = { user, session }
+    const participants = privateConversationParticipants(me, other)
+    let conversation = await app.dao.get(conversationPathByParticipants(participants))
+    if(!conversation) {
+      const id = app.generateUid()
+      conversation = { ...participants }
+      emit({
+        type: "privateConversationCreated",
+        conversation: id,
+        ...conversation
+      })
+      conversation = { id, ...conversation }
+      await PrivateConversation.create(conversation)
+    }
+    return postMessage({ ...props, toType: 'priv', toId: conversation.id },
+      { user: fromUser, session: fromSession },
+      emit, conversation)
   }
 })
 
