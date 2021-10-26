@@ -145,7 +145,7 @@ definition.view({
 const PrivateConversation = definition.foreignModel('messages', 'PrivateConversation')
 
 
-async function postMessage(props, { client, service }, emit, conversation) {
+async function postMessage(props, { user, session }, emit, conversation) {
   console.log("POST MESSAGE", props)
   const { toType, toId } = props
   const channelId = `${toType}_${toId}`
@@ -165,12 +165,12 @@ async function postMessage(props, { client, service }, emit, conversation) {
   for(const key in messageFields) {
     data[key] = props[key]
   }
-  data.user = client.user
+  data.user = user
   data.timestamp = now
   let publicInfo
   if(!data.user) {
     publicInfo = await app.assertTime('getting public info', 1000,
-        () => getPublicInfo(client.sessionId), client.sessionId)
+        () => getPublicInfo(session), session)
     data.session = publicInfo.id
   }
   emit({
@@ -181,9 +181,9 @@ async function postMessage(props, { client, service }, emit, conversation) {
   app.assertTime('triggering read history', 5000, async () => {
     if(toType == 'priv') {
       if(!conversation) conversation = await PrivateConversation.get(toId)
-      const amIFirst = client.user
-          ? conversation.user1 == client.user
-          : conversation.session1 == data.session
+      const amIFirst = user
+          ? conversation.user1 == user
+          : conversation.session1 == session
       const toSession = amIFirst ? conversation.session2 : conversation.session1
       const toUser = amIFirst ? conversation.user2 : conversation.user1
       await app.trigger({ /// asynchronus trigger
@@ -201,15 +201,15 @@ async function postMessage(props, { client, service }, emit, conversation) {
         SessionAccess.indexRangeGet('byAccess', [ access.id ]),
         Membership.indexRangeGet('listMembers', [ toType, toId ])
       ])
-      const toSessions = sessions.filter(s => s.session != client.sessionId).map(s => s.publicInfo)
-      const toUsers = members.filter(m => m.user != client.user).map(m => m.user)
+      const toSessions = sessions.filter(s => s.session != session).map(s => s.publicInfo)
+      const toUsers = members.filter(m => m.user != user).map(m => m.user)
       console.log("SESSIONS", toSessions)
       console.log("MEMBERS", toUsers)
       await app.trigger({ /// asynchronus trigger
         type: 'readHistoryEvent',
-        fromUser: client.user || null,
+        fromUser: user || null,
         toUsers,
-        fromSession: client.user ? null : publicInfo.id,
+        fromSession: user ? null : publicInfo.id,
         toSessions,
         toType, toId, eventId: message
       })
@@ -225,7 +225,7 @@ definition.action({
   //queuedBy: (command) => `${command.toType}_${command.toId})`,
   access: (props, context) => messageAccess.writeAccess(props, context),
   async execute(props, { client, service }, emit) {
-    return postMessage(props, { client, service }, emit)
+    return postMessage(props, { user: client.user, session: client.sessionId }, emit)
   }
 })
 
